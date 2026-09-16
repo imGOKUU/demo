@@ -9,6 +9,7 @@ import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.view.PreviewView
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Camera
@@ -16,6 +17,8 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -23,8 +26,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
@@ -35,11 +40,13 @@ import java.util.concurrent.Executor
 /**
  * Full-screen front-camera preview with a capture button. Saves the photo as a JPEG to
  * [outputFile] and reports it back via [onImageCaptured]; failures are reported via [onError].
+ * An optional [instructions] banner is shown over the top of the preview.
  */
 @Composable
 fun SelfieCamera(
     outputFile: File,
     modifier: Modifier = Modifier,
+    instructions: String? = null,
     onImageCaptured: (Bitmap, File) -> Unit,
     onError: (String) -> Unit
 ) {
@@ -81,6 +88,25 @@ fun SelfieCamera(
             }
         )
 
+        if (!instructions.isNullOrBlank()) {
+            Surface(
+                color = MaterialTheme.colorScheme.scrim.copy(alpha = 0.6f),
+                modifier = Modifier
+                    .align(Alignment.TopCenter)
+                    .fillMaxWidth()
+            ) {
+                Text(
+                    text = instructions,
+                    color = MaterialTheme.colorScheme.surface,
+                    textAlign = TextAlign.Center,
+                    style = MaterialTheme.typography.bodyMedium,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 24.dp, vertical = 16.dp)
+                )
+            }
+        }
+
         if (isCapturing) {
             CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
         }
@@ -108,6 +134,7 @@ fun SelfieCamera(
             modifier = Modifier
                 .align(Alignment.BottomCenter)
                 .padding(32.dp)
+                .alpha(if (isCapturing) 0.5f else 1f)
         ) {
             Icon(Icons.Filled.Camera, contentDescription = "Capture selfie")
         }

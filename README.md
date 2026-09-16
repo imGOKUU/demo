@@ -68,6 +68,25 @@ All of the above logic lives in `FaceRecognitionManager`, used identically by bo
 and attendance screens, so there is exactly one place that decides what counts as "one face" and
 what counts as "a match."
 
+### Data integrity: one staff, one enrolled face
+
+A staff record can only be enrolled once. `StaffDao.saveEnrolmentIfAbsent` runs the
+check-then-write as a single `@Transaction` at the DAO layer, so this holds regardless of what
+the UI does or how many enrolment attempts race each other — it's not just a screen-level guard.
+If `Face Enrolment` is opened for a staff member who already has an embedding, the camera isn't
+even shown; the screen immediately shows "Face already enrolled for this account." Re-enrolling
+an existing staff member is intentionally not available anywhere in the current UI — the
+assignment calls for that to be an explicit, separate admin action in the future, not something
+that happens implicitly by capturing a new selfie.
+
+### Logout
+
+Both the Mark Attendance screen (Staff) and the Staff List screen (Admin) have an explicit
+**Logout** action in the top bar. Logging out clears the entire navigation back stack
+(`popUpTo(graph.id) { inclusive = true }`), not just up to that screen, and returns to a fresh
+Login screen — so there's no way back into any staff or admin screen via the system back button
+(or any other navigation path) after logging out.
+
 ## MobileFaceNet — limitation and substitution (read this)
 
 The assignment asks for MobileFaceNet embeddings, and asks us **not to fake face recognition**,
@@ -98,6 +117,20 @@ suggested `0.65` cosine threshold is kept as the default (it's a single named co
 model in practice — the model author's own reference implementation recommends a lower threshold
 (~0.4) for genuine matches with this particular network. Test on-device and adjust that one
 constant if you see false rejects/accepts.
+
+### On intermittent recognition failures
+
+Cosine similarity between two embeddings of the same person naturally drifts with lighting,
+angle, and expression - that's inherent to any embedding-based face match, not a bug, and the
+threshold (`FaceRecognitionManager.DEFAULT_MATCH_THRESHOLD`, still `0.65`) has intentionally not
+been changed to paper over it. One real correctness bug was found and fixed while looking into
+this, though: `FaceRecognitionManager.cropFace` now crops a **square** region centered on the
+face before handing it to the embedder, instead of the raw (non-square) ML Kit bounding box. The
+embedder always resizes straight to a square input tensor, so a non-square crop was being
+stretched by a different amount on every single capture (bounding box aspect ratio shifts with
+head pose), which nudges the embedding around for reasons that have nothing to do with who's in
+the photo. If matching still feels inconsistent on-device, it's worth checking lighting/angle
+consistency between enrolment and attendance captures before touching the threshold.
 
 ## How to run
 

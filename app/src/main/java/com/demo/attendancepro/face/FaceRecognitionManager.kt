@@ -90,24 +90,32 @@ class FaceRecognitionManager @Inject constructor(
             }
     }
 
+    /**
+     * Crops a square region around [face]'s bounding box (plus margin), centered on the face.
+     * Squaring the crop here - rather than letting [FaceEmbedder] resize a non-square rectangle
+     * straight to its square input tensor - avoids stretching the face by a different amount on
+     * every capture (bounding boxes aren't a fixed aspect ratio and shift with pose/expression),
+     * which otherwise nudges the embedding around and makes matching flaky between sessions.
+     */
     private fun cropFace(source: Bitmap, face: Face): Bitmap {
         val box = face.boundingBox
         val marginX = (box.width() * FACE_CROP_MARGIN).toInt()
         val marginY = (box.height() * FACE_CROP_MARGIN).toInt()
 
-        val left = max(0, box.left - marginX)
-        val top = max(0, box.top - marginY)
-        val right = min(source.width, box.right + marginX)
-        val bottom = min(source.height, box.bottom + marginY)
+        val expandedLeft = box.left - marginX
+        val expandedTop = box.top - marginY
+        val expandedRight = box.right + marginX
+        val expandedBottom = box.bottom + marginY
 
-        val width = max(1, right - left)
-        val height = max(1, bottom - top)
+        val centerX = (expandedLeft + expandedRight) / 2
+        val centerY = (expandedTop + expandedBottom) / 2
+        val side = max(expandedRight - expandedLeft, expandedBottom - expandedTop)
+            .coerceAtMost(min(source.width, source.height))
 
-        return if (left == 0 && top == 0 && width == source.width && height == source.height) {
-            source
-        } else {
-            Bitmap.createBitmap(source, left, top, width, height)
-        }
+        val left = (centerX - side / 2).coerceIn(0, source.width - side)
+        val top = (centerY - side / 2).coerceIn(0, source.height - side)
+
+        return Bitmap.createBitmap(source, left, top, side, side)
     }
 
     companion object {

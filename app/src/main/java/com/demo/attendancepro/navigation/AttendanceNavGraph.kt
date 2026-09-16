@@ -33,7 +33,14 @@ fun AttendanceNavGraph(navController: NavHostController = rememberNavController(
         composable(Screen.StaffList.route) {
             StaffListScreen(
                 onAddStaff = { navController.navigate(Screen.AddStaff.route) },
-                onStaffClick = { staffId -> navController.navigate(Screen.StaffProfile.createRoute(staffId)) }
+                onStaffClick = { staffId -> navController.navigate(Screen.StaffProfile.createRoute(staffId)) },
+                onLogout = {
+                    // Clear the whole back stack so there is no way to navigate back into any
+                    // admin screen - via system back or otherwise - after logging out.
+                    navController.navigate(Screen.Login.route) {
+                        popUpTo(navController.graph.id) { inclusive = true }
+                    }
+                }
             )
         }
 
@@ -68,8 +75,10 @@ fun AttendanceNavGraph(navController: NavHostController = rememberNavController(
         composable(Screen.MarkAttendance.route) {
             MarkAttendanceScreen(
                 onLogout = {
+                    // Clear the whole back stack (not just up to this destination) so there is no
+                    // way to navigate - via system back or otherwise - into the staff screen again.
                     navController.navigate(Screen.Login.route) {
-                        popUpTo(Screen.MarkAttendance.route) { inclusive = true }
+                        popUpTo(navController.graph.id) { inclusive = true }
                     }
                 }
             )

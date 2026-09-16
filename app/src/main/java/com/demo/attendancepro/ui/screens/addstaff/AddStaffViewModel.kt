@@ -13,6 +13,7 @@ import javax.inject.Inject
 data class AddStaffUiState(
     val name: String = "",
     val employeeId: String = "",
+    val isSaving: Boolean = false,
     val error: String? = null,
     val createdStaffId: Long? = null
 )
@@ -35,13 +36,15 @@ class AddStaffViewModel @Inject constructor(
 
     fun saveAndContinue() {
         val state = _uiState.value
+        if (state.isSaving) return
         if (state.name.isBlank() || state.employeeId.isBlank()) {
             _uiState.update { it.copy(error = "Name and Employee ID are required") }
             return
         }
+        _uiState.update { it.copy(isSaving = true) }
         viewModelScope.launch {
             val id = staffRepository.addStaff(state.name.trim(), state.employeeId.trim())
-            _uiState.update { it.copy(createdStaffId = id) }
+            _uiState.update { it.copy(isSaving = false, createdStaffId = id) }
         }
     }
 }
